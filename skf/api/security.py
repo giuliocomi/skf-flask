@@ -7,6 +7,8 @@ from skf.database import db
 from skf.database.logs import Log
 
 
+# @mitigates SKF:WebApp against SSL stripping (#sslstripping) with Strict-Transport-Security header
+# @accepts XSS (#xss) to SKF:WebApp with lack of the Content-Security-Policy (#CSP) to prevent XSS
 def security_headers():
     """This decorator passes multiple security headers"""
     return {'X-Frame-Options': 'deny',
@@ -17,6 +19,7 @@ def security_headers():
             'Server': 'Security Knowledge Framework API'}
 
 
+# @mitigates SKF:WebApp against misuse with logging user operations
 def log(message, threat, status):
     """Create log entry and write events triggerd by the user, contains FAIL or SUCCESS and threat LOW MEDIUM HIGH"""
     now = datetime.datetime.now()
@@ -36,9 +39,10 @@ def log(message, threat, status):
     except:
         user_id = "0"
         ip = "0.0.0.0"
-        event = "Datelog: "+dateLog+" "+" Datetime: "+dateTime+" "+"Threat: "+threat+" "+" IP:"+ip+" "+"UserId: "+user_id+" "+"Status: "+status+" "+"Message: "+message
+        event = "Datelog: " + dateLog + " " + " Datetime: " + dateTime + " " + "Threat: " + threat + " " + " IP:" + ip + " " + "UserId: " + user_id + " " + "Status: " + status + " " + "Message: " + message
 
 
+# @mitigates SKF:WebApp against XSS (#xss) and SQLI (#sqli) with input validation
 def val_alpha(value):
     """User input validation for checking a-zA-Z"""
     match = re.findall(r"[^\w]|[\d]", str(value))
@@ -49,6 +53,7 @@ def val_alpha(value):
         return True
 
 
+# @mitigates SKF:WebApp against XSS (#xss) and SQLI (#sqli) with input validation
 def val_alpha_num(value):
     """User input validation for checking a-z A-Z 0-9 _ . - ?"""
     match = re.findall(r"[^\ \w\.-\?]", value)
@@ -58,6 +63,8 @@ def val_alpha_num(value):
     else:
         return True
 
+
+# @mitigates SKF:WebApp against XSS (#xss) and SQLI (#sqli) with input validation
 def val_alpha_num_special(value):
     """User input validation for checking a-z A-Z 0-9 _ . - ' , " """
     match = re.findall(r"[^\ \w_\.\-\'\",\+\(\)\/\:@\?\&\=\%\!\#\^\;]", str(value))
@@ -67,16 +74,19 @@ def val_alpha_num_special(value):
     else:
         return True
 
-def val_num(value): 
+
+# @mitigates SKF:WebApp against XSS (#xss) and SQLI (#sqli) with input validation
+def val_num(value):
     """User input validation for checking numeric values only 0-9"""
-    if not isinstance( value, int ):
+    if not isinstance(value, int):
         log("User supplied not an 0-9", "MEDIUM", "FAIL")
         abort(400, "Validation Error on val_num")
     else:
         return True
 
 
-def val_float(value): 
+# @mitigates SKF:WebApp against XSS (#xss) and SQLI (#sqli) with input validation
+def val_float(value):
     """User input validation for checking float values only 0-9 ."""
     if not isinstance(value, float):
         log("User supplied not a float value.", "MEDIUM", "FAIL")
@@ -84,6 +94,8 @@ def val_float(value):
     else:
         return True
 
+
+# @mitigates SKF:WebApp against unauthorised access to API with JWT authorization header
 def validate_privilege(self, privilege):
     """Validates the JWT privileges"""
     if not request.headers.get('Authorization'):
@@ -102,7 +114,7 @@ def validate_privilege(self, privilege):
         if value == privilege:
             return True
     log("User JWT header contains wrong privilege", "HIGH", "FAIL")
-    return  abort(403, 'JWT wrong privileges')
+    return abort(403, 'JWT wrong privileges')
 
 
 def select_userid_jwt(self):
@@ -124,10 +136,7 @@ def select_privilege_jwt(self):
     token = request.headers.get('Authorization').split()[0]
     try:
         check_privilege = jwt.decode(token, settings.JWT_SECRET, algorithms='HS256')
-    except jwt.exceptions.DecodeError:
+    except (jwt.exceptions.DecodeError, jwt.exceptions.ExpiredSignature) as error:
         log("User JWT header could not be decoded", "HIGH", "FAIL")
         abort(403, 'JWT decode error')
-    except jwt.exceptions.ExpiredSignature:
-        log("User JWT header is expired", "HIGH", "FAIL")
-        abort(403, 'JWT token expired')
     return check_privilege

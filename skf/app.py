@@ -154,6 +154,7 @@ def updatedb_command():
     update_db()
     print('Database updated with the markdown files.')
 
+# @connects User:Browser to SKF:WebApp with HTTP:settings.FLASK_PORT
 def main():
     """Main SKF method"""
     #initialize_app(app)
